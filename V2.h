@@ -2,16 +2,19 @@
 
 #include <cmath>
 #include <iostream>
-struct V2 {
+struct V2
+{
   float x, y;
 
-  V2(float _x, float _y) {
+  V2(float _x, float _y)
+  {
     x = _x;
     y = _y;
   }
 
   float norm() { return sqrt(x * x + y * y); }
-  void normalize() {
+  void normalize()
+  {
     float n = norm();
     x /= n;
     y /= n;
@@ -22,7 +25,7 @@ struct V2 {
 
 bool operator==(const V2 &a, const V2 &b);
 
-// red�finition des op�rateurs standards
+// redéfinition des opérateurs standards
 
 V2 operator+(const V2 &a, const V2 &b);
 V2 operator-(const V2 &a, const V2 &b);

@@ -2,7 +2,8 @@
 
 // comparaison sur des flottants... traitement sp�cial
 
-bool operator==(const V2 &a, const V2 &b) {
+bool operator==(const V2 &a, const V2 &b)
+{
   V2 t = a - b;
   float epsilon = 0.001f;
   return t.norm() < epsilon;
@@ -20,6 +21,7 @@ float operator*(const V2 &a, const V2 &b) { return a.x * b.x + b.y * a.y; };
 
 float operator^(const V2 &a, const V2 &b) { return a.x * b.y - b.x * a.y; };
 
-std::ostream &operator<<(std::ostream &os, V2 &t) {
+std::ostream &operator<<(std::ostream &os, V2 &t)
+{
   return os << "(" << t.x << "," << t.y << ")";
 };
