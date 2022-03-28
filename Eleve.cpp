@@ -24,12 +24,40 @@ struct GameData
 
 GameData G;
 
+struct Bumper
+{
+  float x, y, r;
+  Bumper(float _x, float _y, float _r)
+  {
+    x = _x;
+    y = _y;
+    r = _r;
+  }
+  void drawBumper()
+  {
+    G2D::DrawCircle(V2(x, y), r, Color::Magenta, true);
+  }
+};
+
 V2 Rebond(V2 v, V2 n)
 {
   n.normalize();
   return v - 2 * (v * n) * n;
 }
 
+// 0 : orthogonal
+// + : same direction
+// - : opposite direction
+float sameDirection(V2 v1, V2 v2)
+{
+  return v1 * v2;
+}
+
+bool sameSide(V2 AB, V2 M, v2 P) {
+  float r1 = AB ^ M;
+  float r2 = AB ^ P;
+  return r1 * r2 > 0;
+}
 void render()
 {
 
@@ -41,6 +69,13 @@ void render()
   G2D::DrawRectangle(V2(0, 0), V2(G.WidthPix, G.HeighPix), Color::Green);
 
   G2D::DrawCircle(G.BallPos, 15, Color::Red, true);
+
+  Bumper bumper1(200, 200, 50);
+  bumper1.drawBumper();
+  Bumper bumper2(550, 550, 20);
+  bumper2.drawBumper();
+  Bumper bumper3(500, 300, 40);
+  bumper3.drawBumper();
 
   G2D::DrawCircle(V2(200, 400), 40, Color::Blue, true);
   G2D::DrawCircle(V2(400, 400), 40, Color::Blue, true);
@@ -82,17 +117,43 @@ void Logic()
   }
 }
 
+void test1(void)
+{
+  V2 A(5, 10);
+  V2 B = V2(6, 15);
+  V2 AB = B - A;
+  cout << AB << endl;
+  V2 u(5, 7);
+  V2 v(2, 3);
+  cout << "Produit scalaire  : " << (u * v) << endl;
+  cout << "Produit vectoriel : " << (u ^ v) << endl;
+}
+void test_collision(void)
+{
+  V2 n(-1, 1);
+  V2 r = Rebond(V2(1, 0), n);
+  cout << r << endl;
+  r = Rebond(V2(1, -1), n);
+  cout << r << endl;
+  r = Rebond(V2(-1, 1), n);
+  cout << r << endl;
+  r = Rebond(V2(0, 1), n);
+  cout << r << endl;
+
+  n = V2(0, 1);
+  r = Rebond(V2(1, -1), n);
+  cout << r << endl;
+  r = Rebond(V2(0, -1), n);
+  cout << r << endl;
+  r = Rebond(V2(-1, 1), n);
+  cout << r << endl;
+  r = Rebond(V2(-1, -1), n);
+  cout << r << endl;
+}
 int main(int argc, char *argv[])
 {
-  // V2 A(5, 10);
-  // V2 B = V2(6, 15);
-  // V2 AB = B - A;
-  // cout << AB << endl;
-  // V2 u(5, 7);
-  // V2 v(2, 3);
-  // cout << "Produit scalaire  : " << (u * v) << endl;
-  // cout << "Produit vectoriel : " << (u ^ v) << endl;
-
+  // test1();
+  test_collision();
   G2D::InitWindow(argc, argv, V2(G.WidthPix, G.HeighPix), V2(200, 200),
                   string("Super Flipper 600 !!"));
 
