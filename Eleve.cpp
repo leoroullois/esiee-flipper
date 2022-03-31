@@ -17,7 +17,15 @@ struct Bumper {
     r = _r;
     visible = _visible;
   }
-  void drawBumper(void) { G2D::DrawCircle(V2(x, y), r, Color::Blue, visible); }
+  V2 getV2(void) { return V2(x, y); }
+  void drawBumper(void) { G2D::DrawCircle(getV2(), r, Color::Blue, visible); }
+  void drawBorder(void) {
+    // TODO: draw border
+    float rayon = r + 100;
+    std::cout << "rayon " << rayon << endl;
+    G2D::DrawCircle(getV2(), rayon, Color::Red, true);
+    G2D::Show();
+  }
 };
 // information de partie
 struct GameData {
@@ -43,6 +51,13 @@ GameData G;
 V2 Rebond(V2 v, V2 n) {
   n.normalize();
   return v - 2 * (v * n) * n;
+}
+
+void rotate(V2 &v, float angle) {
+  float x = v.x * cos(angle) - v.y * sin(angle);
+  float y = v.x * sin(angle) + v.y * cos(angle);
+  v.x = x;
+  v.y = y;
 }
 
 // 0 : orthogonal
@@ -75,11 +90,11 @@ bool pointInCercle(V2 C, float r, V2 P) { return (dist(C, P) <= r); }
 
 bool detectCircleCollision(V2 ball, Bumper bumper) {
   const int R = bumper.r + 15;
-  return dist(ball, V2(bumper.x, bumper.y)) < R;
+  return dist(ball, V2(bumper.x, bumper.y)) <= R;
 }
 
 void render() {
-
+  std::cout << G.idFrame << endl;
   G2D::ClearScreen(Color::Black);
 
   G2D::DrawStringFontMono(V2(80, G.HeighPix - 70), string("Super Flipper"), 50,
@@ -91,6 +106,7 @@ void render() {
 
   for (int i = 0; i < 3; i++) {
     G.bumpers[i].drawBumper();
+    // G.bumpers[i].drawBorder();
   }
 
   for (int i = 0; i < 11; i++)
@@ -107,7 +123,6 @@ void nextMove(void) {
 
 void Logic() {
   G.idFrame += 1;
-
   if (G.BallPos.y > G.HeighPix - 15) {
     G.BallPos.y = G.HeighPix - 15;
     G.BallSpeed = Rebond(G.BallSpeed, V2(0, -1));
@@ -125,6 +140,7 @@ void Logic() {
     if (detectCircleCollision(G.BallPos, G.bumpers[i])) {
       G.BallSpeed = Rebond(G.BallSpeed, V2(G.bumpers[i].x - G.BallPos.x,
                                            G.bumpers[i].y - G.BallPos.y));
+      G.bumpers[i].drawBorder();
     }
   }
   nextMove();
