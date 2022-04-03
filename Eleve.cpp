@@ -8,22 +8,56 @@
 
 using namespace std;
 
+// void rotate(V2 &v, float angle) {
+//   float x = v.x * cos(angle) - v.y * sin(angle);
+//   float y = v.x * sin(angle) + v.y * cos(angle);
+//   v.x = x;
+//   v.y = y;
+// }
+
+// 0 : orthogonal
+// + : same direction
+// - : opposite direction
+// float sameDirection(V2 v1, V2 v2) { return v1 * v2; }
+
+// bool sameSide(V2 AB, V2 M, V2 P) {
+//   float r1 = AB ^ M;
+//   float r2 = AB ^ P;
+//   return r1 * r2 > 0;
+// }
+// V2 Rot90(V2 v) { return V2(-v.y, v.x); }
+
+// float dist(V2 A, V2 B, V2 P) {
+//   V2 AB(B - A);
+//   V2 N(AB.y, -AB.x);
+//   N.normalize();
+//   V2 AP(P - A);
+//   return abs(AP * N);
+// }
+
+// bool pointInRectangle(float x1, float x2, float y1, float y2, float xP,
+//                       float yP) {
+//   return (xP >= x1 && xP <= x2 && yP >= y1 && yP <= y2);
+// }
+
 struct Bumper {
-  float x, y, r;
-  bool visible;
+  float x, y, r, collisionSeconds;
+  bool visible, collision;
+
   Bumper(float _x, float _y, float _r, bool _visible) {
     x = _x;
     y = _y;
     r = _r;
     visible = _visible;
+    collision = false;
+    collisionSeconds = -10000;
   }
   V2 getV2(void) { return V2(x, y); }
   void drawBumper(void) { G2D::DrawCircle(getV2(), r, Color::Blue, visible); }
-  void drawBorder(void) {
-    // TODO: draw border
+  void drawBorder(bool isVisible) {
     float rayon = r + 100;
-    std::cout << "rayon " << rayon << endl;
-    G2D::DrawCircle(getV2(), rayon, Color::Red, true);
+    std::cout << "isVisible " << isVisible << endl;
+    G2D::DrawCircle(getV2(), rayon, Color::Red, isVisible);
     G2D::Show();
   }
 };
@@ -53,38 +87,7 @@ V2 Rebond(V2 v, V2 n) {
   return v - 2 * (v * n) * n;
 }
 
-void rotate(V2 &v, float angle) {
-  float x = v.x * cos(angle) - v.y * sin(angle);
-  float y = v.x * sin(angle) + v.y * cos(angle);
-  v.x = x;
-  v.y = y;
-}
-
-// 0 : orthogonal
-// + : same direction
-// - : opposite direction
-float sameDirection(V2 v1, V2 v2) { return v1 * v2; }
-
-bool sameSide(V2 AB, V2 M, V2 P) {
-  float r1 = AB ^ M;
-  float r2 = AB ^ P;
-  return r1 * r2 > 0;
-}
-V2 Rot90(V2 v) { return V2(-v.y, v.x); }
-
-float dist(V2 A, V2 B, V2 P) {
-  V2 AB(B - A);
-  V2 N(AB.y, -AB.x);
-  N.normalize();
-  V2 AP(P - A);
-  return abs(AP * N);
-}
 float dist(V2 A, V2 B) { return (B - A).norm(); }
-
-bool pointInRectangle(float x1, float x2, float y1, float y2, float xP,
-                      float yP) {
-  return (xP >= x1 && xP <= x2 && yP >= y1 && yP <= y2);
-}
 
 bool pointInCercle(V2 C, float r, V2 P) { return (dist(C, P) <= r); }
 
@@ -94,7 +97,6 @@ bool detectCircleCollision(V2 ball, Bumper bumper) {
 }
 
 void render() {
-  std::cout << G.idFrame << endl;
   G2D::ClearScreen(Color::Black);
 
   G2D::DrawStringFontMono(V2(80, G.HeighPix - 70), string("Super Flipper"), 50,
@@ -106,7 +108,6 @@ void render() {
 
   for (int i = 0; i < 3; i++) {
     G.bumpers[i].drawBumper();
-    // G.bumpers[i].drawBorder();
   }
 
   for (int i = 0; i < 11; i++)
@@ -120,30 +121,71 @@ void nextMove(void) {
   G.BallPos.x += G.BallSpeed.x * dt;
   G.BallPos.y += G.BallSpeed.y * dt;
 }
+void handleWall(float x, float y) {
+  if (G.BallPos.y > G.HeighPix - 15) {
+    G.BallPos.x = x;
+    G.BallPos.y = y;
+    G.BallSpeed = Rebond(G.BallSpeed, V2(0, -1));
+  } else if (G.BallPos.y < 15) {
+    G.BallPos.x = x;
+    G.BallPos.y = y;
+    G.BallSpeed = Rebond(G.BallSpeed, V2(0, 1));
+  } else if (G.BallPos.x < 15) {
+    G.BallPos.x = x;
+    G.BallPos.y = y;
+    G.BallSpeed = Rebond(G.BallSpeed, V2(1, 0));
+  } else if (G.BallPos.x > G.WidthPix - 15) {
+    G.BallPos.x = x;
+    G.BallPos.y = y;
+    G.BallSpeed = Rebond(G.BallSpeed, V2(-1, 0));
+  }
+}
+
+void handleBumperCollision(Bumper &bumper, float x, float y) {
+  if (detectCircleCollision(G.BallPos, bumper)) {
+    // ? collision donc retourne la balle a la position avant collision
+    G.BallPos.x = x;
+    G.BallPos.y = y;
+    // ? vecteur normal
+    float nx = bumper.x - G.BallPos.x;
+    float ny = bumper.y - G.BallPos.y;
+
+    G.BallSpeed = Rebond(G.BallSpeed, V2(nx, ny));
+
+    float seconds = G2D::ElapsedTimeFromStartSeconds() * 1e3;
+    bumper.collisionSeconds = seconds;
+    bumper.collision = true;
+    std::cout << "collision bumper : " << seconds << endl;
+  }
+}
+void handleBumperBorder(Bumper &bumper) {
+  if (bumper.collision == true) {
+    if (bumper.collisionSeconds + 2 <=
+        G2D::ElapsedTimeFromStartSeconds() * 1e3) {
+      bumper.drawBorder(true);
+    } else {
+      bumper.drawBorder(false);
+      bumper.collision = false;
+    }
+  }
+}
+void handleBumpers(float x, float y) {
+  // ? pour chacun des bumpers
+  for (int i = 0; i < 3; i++) {
+    Bumper &bumper = G.bumpers[i];
+    // ? si la balle touche le bumper
+    handleBumperCollision(bumper, x, y);
+    handleBumperBorder(bumper);
+  }
+}
 
 void Logic() {
   G.idFrame += 1;
-  if (G.BallPos.y > G.HeighPix - 15) {
-    G.BallPos.y = G.HeighPix - 15;
-    G.BallSpeed = Rebond(G.BallSpeed, V2(0, -1));
-  } else if (G.BallPos.y < 15) {
-    G.BallPos.y = 15;
-    G.BallSpeed = Rebond(G.BallSpeed, V2(0, 1));
-  } else if (G.BallPos.x < 15) {
-    G.BallPos.x = 15;
-    G.BallSpeed = Rebond(G.BallSpeed, V2(1, 0));
-  } else if (G.BallPos.x > G.WidthPix - 15) {
-    G.BallPos.x = G.WidthPix - 15;
-    G.BallSpeed = Rebond(G.BallSpeed, V2(-1, 0));
-  }
-  for (int i = 0; i < 3; i++) {
-    if (detectCircleCollision(G.BallPos, G.bumpers[i])) {
-      G.BallSpeed = Rebond(G.BallSpeed, V2(G.bumpers[i].x - G.BallPos.x,
-                                           G.bumpers[i].y - G.BallPos.y));
-      G.bumpers[i].drawBorder();
-    }
-  }
+  float x = G.BallPos.x;
+  float y = G.BallPos.y;
   nextMove();
+  handleWall(x, y);
+  handleBumpers(x, y);
 }
 
 void test1(void) {
