@@ -3,6 +3,7 @@
 #include "G2D.h"
 #include <cstdlib>
 #include <iostream>
+#include <stdlib.h>
 #include <string>
 #include <vector>
 
@@ -52,6 +53,11 @@ struct Bumper {
     collision = false;
     collisionSeconds = -10000;
   }
+  void setCollision(bool _collision) { collision = _collision; }
+  void setCollisionSeconds(float _collisionSeconds) {
+    collisionSeconds = _collisionSeconds;
+  }
+
   V2 getV2(void) { return V2(x, y); }
   void drawBumper(void) { G2D::DrawCircle(getV2(), r, Color::Blue, visible); }
   void drawBorder(bool isVisible) {
@@ -61,6 +67,7 @@ struct Bumper {
     G2D::Show();
   }
 };
+
 // information de partie
 struct GameData {
   int idFrame = 0;
@@ -85,6 +92,16 @@ GameData G;
 V2 Rebond(V2 v, V2 n) {
   n.normalize();
   return v - 2 * (v * n) * n;
+}
+
+V2 rotate(V2 v, float angle) {
+  float x = v.x * cos(angle) - v.y * sin(angle);
+  float y = v.x * sin(angle) + v.y * cos(angle);
+  V2 vbis = V2(x, y);
+  std::cout << "alpha=" << angle;
+  std::cout << " v=" << v;
+  std::cout << " v'=" << vbis << endl;
+  return vbis;
 }
 
 float dist(V2 A, V2 B) { return (B - A).norm(); }
@@ -122,22 +139,27 @@ void nextMove(void) {
   G.BallPos.y += G.BallSpeed.y * dt;
 }
 void handleWall(float x, float y) {
+  int alpha = rand() % 60;
   if (G.BallPos.y > G.HeighPix - 15) {
     G.BallPos.x = x;
     G.BallPos.y = y;
-    G.BallSpeed = Rebond(G.BallSpeed, V2(0, -1));
+    G.BallSpeed = rotate(Rebond(G.BallSpeed, V2(0, -1)), 0);
+    G.BallSpeed = rotate(G.BallSpeed, alpha * PI / 180);
   } else if (G.BallPos.y < 15) {
     G.BallPos.x = x;
     G.BallPos.y = y;
     G.BallSpeed = Rebond(G.BallSpeed, V2(0, 1));
+    G.BallSpeed = rotate(G.BallSpeed, alpha * PI / 180);
   } else if (G.BallPos.x < 15) {
     G.BallPos.x = x;
     G.BallPos.y = y;
     G.BallSpeed = Rebond(G.BallSpeed, V2(1, 0));
+    G.BallSpeed = rotate(G.BallSpeed, alpha * PI / 180);
   } else if (G.BallPos.x > G.WidthPix - 15) {
     G.BallPos.x = x;
     G.BallPos.y = y;
     G.BallSpeed = Rebond(G.BallSpeed, V2(-1, 0));
+    G.BallSpeed = rotate(G.BallSpeed, alpha * PI / 180);
   }
 }
 
@@ -151,21 +173,22 @@ void handleBumperCollision(Bumper &bumper, float x, float y) {
     float ny = bumper.y - G.BallPos.y;
 
     G.BallSpeed = Rebond(G.BallSpeed, V2(nx, ny));
-
     float seconds = G2D::ElapsedTimeFromStartSeconds() * 1e3;
-    bumper.collisionSeconds = seconds;
-    bumper.collision = true;
-    std::cout << "collision bumper : " << seconds << endl;
+    bumper.setCollisionSeconds(seconds);
+    bumper.setCollision(true);
   }
 }
 void handleBumperBorder(Bumper &bumper) {
+  float seconds = G2D::ElapsedTimeFromStartSeconds() * 1e3;
+  std::cout << "collision <= 2s : " << bumper.collision << endl;
+  std::cout << "collision : " << bumper.collisionSeconds << " " << seconds
+            << endl;
   if (bumper.collision == true) {
-    if (bumper.collisionSeconds + 2 <=
-        G2D::ElapsedTimeFromStartSeconds() * 1e3) {
+    if (bumper.collisionSeconds + 20 <= seconds) {
       bumper.drawBorder(true);
     } else {
       bumper.drawBorder(false);
-      bumper.collision = false;
+      bumper.setCollision(false);
     }
   }
 }
@@ -173,9 +196,8 @@ void handleBumpers(float x, float y) {
   // ? pour chacun des bumpers
   for (int i = 0; i < 3; i++) {
     Bumper &bumper = G.bumpers[i];
-    // ? si la balle touche le bumper
     handleBumperCollision(bumper, x, y);
-    handleBumperBorder(bumper);
+    // TODO: handleBumperBorder(bumper);
   }
 }
 
