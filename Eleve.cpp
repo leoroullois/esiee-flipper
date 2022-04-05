@@ -9,13 +9,6 @@
 
 using namespace std;
 
-// void rotate(V2 &v, float angle) {
-//   float x = v.x * cos(angle) - v.y * sin(angle);
-//   float y = v.x * sin(angle) + v.y * cos(angle);
-//   v.x = x;
-//   v.y = y;
-// }
-
 // 0 : orthogonal
 // + : same direction
 // - : opposite direction
@@ -28,44 +21,105 @@ using namespace std;
 // }
 // V2 Rot90(V2 v) { return V2(-v.y, v.x); }
 
-// float dist(V2 A, V2 B, V2 P) {
-//   V2 AB(B - A);
-//   V2 N(AB.y, -AB.x);
-//   N.normalize();
-//   V2 AP(P - A);
-//   return abs(AP * N);
+float dist(V2 A, V2 B, V2 P) {
+  V2 AB(B - A);
+  V2 N(AB.y, -AB.x);
+  N.normalize();
+  V2 AP(P - A);
+  return abs(AP * N);
+}
+
+// * : intersection
+// float dist(V2 A, V2 B) {
+
 // }
 
+// bool interSegment(V2 A, V2 B, V2 P, V2 &Q) {
+//   float d1= dist(A, P);
+//   if (d1 < 0)
+//     return false;
+//   float d2= dist(A, B, P);
+//   if (d2 > 0)
+//     return false;
+//   Q = A + AB * (d / AB.norm());
+//   return true;
+// }
 // bool pointInRectangle(float x1, float x2, float y1, float y2, float xP,
 //                       float yP) {
 //   return (xP >= x1 && xP <= x2 && yP >= y1 && yP <= y2);
 // }
 
 struct Bumper {
-  float x, y, r, collisionSeconds;
-  bool visible, collision;
+  float x, y, r;
+  float temps;
+  bool visible;
+  int etat;
 
   Bumper(float _x, float _y, float _r, bool _visible) {
     x = _x;
     y = _y;
     r = _r;
     visible = _visible;
-    collision = false;
-    collisionSeconds = -10000;
+    temps = 0;
+    etat = 0;
   }
-  void setCollision(bool _collision) { collision = _collision; }
-  void setCollisionSeconds(float _collisionSeconds) {
-    collisionSeconds = _collisionSeconds;
+  void setTemps(void) {
+    float T = 2.0 / 4;
+    float dt = G2D::ElapsedTimeFromLastCallbackSeconds();
+    temps += dt;
+    std::cout << "temps : " << temps;
+    std::cout << " dt : " << dt << std::endl;
+    if (temps + dt >= 4 * T) {
+      temps = 0;
+      etat = 4;
+      drawEtat();
+    } else if (temps + dt >= 3 * T) {
+      setEtat(3);
+      drawEtat();
+    } else if (temps + dt >= 2 * T) {
+      // temps += dt;
+      setEtat(2);
+      drawEtat();
+    } else if (temps + dt >= T) {
+      // temps += dt;
+      setEtat(1);
+      drawEtat();
+
+    } else {
+      // temps += dt;
+      setEtat(0);
+      drawEtat();
+    }
   }
+  void drawBorder(int rayon) {
+    G2D::DrawCircle(getV2(), r + rayon, Color::Red, true);
+    G2D::DrawCircle(getV2(), r, Color::Blue, true);
+  }
+  void drawEtat() {
+    switch (etat) {
+    case 0:
+      drawBorder(20);
+      break;
+    case 1:
+      drawBorder(15);
+      break;
+    case 2:
+      drawBorder(10);
+      break;
+    case 3:
+      drawBorder(5);
+      break;
+    case 4:
+      drawBorder(0);
+      break;
+    default:
+      break;
+    }
+  }
+  void setEtat(int _etat) { etat = _etat; }
 
   V2 getV2(void) { return V2(x, y); }
   void drawBumper(void) { G2D::DrawCircle(getV2(), r, Color::Blue, visible); }
-  void drawBorder(bool isVisible) {
-    float rayon = r + 100;
-    std::cout << "isVisible " << isVisible << endl;
-    G2D::DrawCircle(getV2(), rayon, Color::Red, isVisible);
-    G2D::Show();
-  }
 };
 
 // information de partie
@@ -98,7 +152,7 @@ V2 rotate(V2 v, float angle) {
   float x = v.x * cos(angle) - v.y * sin(angle);
   float y = v.x * sin(angle) + v.y * cos(angle);
   V2 vbis = V2(x, y);
-  std::cout << "alpha=" << angle;
+  std::cout << "alpha=" << angle * 180 / PI << "°";
   std::cout << " v=" << v;
   std::cout << " v'=" << vbis << endl;
   return vbis;
@@ -124,7 +178,8 @@ void render() {
   G2D::DrawCircle(G.BallPos, 15, Color::Red, true);
 
   for (int i = 0; i < 3; i++) {
-    G.bumpers[i].drawBumper();
+    // G.bumpers[i].drawBumper();
+    G.bumpers[i].setTemps();
   }
 
   for (int i = 0; i < 11; i++)
@@ -139,11 +194,11 @@ void nextMove(void) {
   G.BallPos.y += G.BallSpeed.y * dt;
 }
 void handleWall(float x, float y) {
-  int alpha = rand() % 60;
+  float alpha = (rand() % 601 - 300) / 100.0;
   if (G.BallPos.y > G.HeighPix - 15) {
     G.BallPos.x = x;
     G.BallPos.y = y;
-    G.BallSpeed = rotate(Rebond(G.BallSpeed, V2(0, -1)), 0);
+    G.BallSpeed = Rebond(G.BallSpeed, V2(0, -1));
     G.BallSpeed = rotate(G.BallSpeed, alpha * PI / 180);
   } else if (G.BallPos.y < 15) {
     G.BallPos.x = x;
@@ -173,25 +228,17 @@ void handleBumperCollision(Bumper &bumper, float x, float y) {
     float ny = bumper.y - G.BallPos.y;
 
     G.BallSpeed = Rebond(G.BallSpeed, V2(nx, ny));
-    float seconds = G2D::ElapsedTimeFromStartSeconds() * 1e3;
-    bumper.setCollisionSeconds(seconds);
-    bumper.setCollision(true);
+    float dt = G2D::ElapsedTimeFromLastCallbackSeconds() * 1e3;
+    // if(bumper)
+    bumper.setTemps();
   }
 }
-void handleBumperBorder(Bumper &bumper) {
-  float seconds = G2D::ElapsedTimeFromStartSeconds() * 1e3;
-  std::cout << "collision <= 2s : " << bumper.collision << endl;
-  std::cout << "collision : " << bumper.collisionSeconds << " " << seconds
-            << endl;
-  if (bumper.collision == true) {
-    if (bumper.collisionSeconds + 20 <= seconds) {
-      bumper.drawBorder(true);
-    } else {
-      bumper.drawBorder(false);
-      bumper.setCollision(false);
-    }
+void handleRoundedBorder(void) {
+  for (int i = 0; i < 11; i++) {
   }
 }
+
+void handleBumperBorder(Bumper &bumper) {}
 void handleBumpers(float x, float y) {
   // ? pour chacun des bumpers
   for (int i = 0; i < 3; i++) {
