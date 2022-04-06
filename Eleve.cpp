@@ -171,7 +171,99 @@ bool detectCircleCollision(V2 ball, Bumper bumper) {
   const int R = bumper.r + 15;
   return dist(ball, V2(bumper.x, bumper.y)) <= R;
 }
+void handleRoundedBorder(void) {
+  for (int i = 0; i < 11; i++) {
+  }
+}
+/**
+ * @brief calcule les nouvelles coordonnées de la balle
+ */
+void nextMove(void) {
+  double dt = G2D::ElapsedTimeFromLastCallbackSeconds();
+  G.BallPos.x += G.BallSpeed.x * dt;
+  G.BallPos.y += G.BallSpeed.y * dt;
+}
+/**
+ * @brief calcule la nouvelle vitesse dans le cas d'une collision contre un des
+ * 4 murs
+ */
+void handleWall(float x, float y) {
+  float alpha = (rand() % 601 - 300) / 100.0;
+  if (G.BallPos.y > G.HeighPix - 15) {
+    G.BallPos.x = x;
+    G.BallPos.y = y;
+    G.BallSpeed = Rebond(G.BallSpeed, V2(0, -1));
+    G.BallSpeed = rotate(G.BallSpeed, alpha * PI / 180);
+  } else if (G.BallPos.y < 15) {
+    G.BallPos.x = x;
+    G.BallPos.y = y;
+    G.BallSpeed = Rebond(G.BallSpeed, V2(0, 1));
+    G.BallSpeed = rotate(G.BallSpeed, alpha * PI / 180);
+  } else if (G.BallPos.x < 15) {
+    G.BallPos.x = x;
+    G.BallPos.y = y;
+    G.BallSpeed = Rebond(G.BallSpeed, V2(1, 0));
+    G.BallSpeed = rotate(G.BallSpeed, alpha * PI / 180);
+  } else if (G.BallPos.x > G.WidthPix - 15) {
+    G.BallPos.x = x;
+    G.BallPos.y = y;
+    G.BallSpeed = Rebond(G.BallSpeed, V2(-1, 0));
+    G.BallSpeed = rotate(G.BallSpeed, alpha * PI / 180);
+  }
+}
+/**
+ * @brief calcule la nouvelle vitesse dans le cas d'une collision contre un des
+ * bumper
+ */
+void handleBumperCollision(Bumper &bumper, float x, float y) {
+  if (detectCircleCollision(G.BallPos, bumper)) {
+    // ? collision donc retourne la balle a la position avant collision
+    G.BallPos.x = x;
+    G.BallPos.y = y;
+    // ? vecteur normal
+    float nx = bumper.x - G.BallPos.x;
+    float ny = bumper.y - G.BallPos.y;
 
+    G.BallSpeed = Rebond(G.BallSpeed, V2(nx, ny));
+  }
+}
+
+/**
+ * @brief Gère la collision pour les 3 bumpers
+ * @param x ancienne coordonnée
+ * @param y ancienne coordonnée
+ */
+void handleBumpers(float x, float y) {
+  // ? pour chacun des bumpers
+  for (int i = 0; i < 3; i++) {
+    Bumper &bumper = G.bumpers[i];
+    handleBumperCollision(bumper, x, y);
+  }
+}
+
+/**
+ * @brief synchroniser la collision des bumper entre la fonction logique et
+ * render pour déclencher le flash
+ */
+void synchronizeBumperCollision(void) {
+  if (detectCircleCollision(G.BallPos, G.bumper1)) {
+    G.bumpers[0].collision = true;
+    G.bumpers[1].collision = false;
+    G.bumpers[2].collision = false;
+  } else if (detectCircleCollision(G.BallPos, G.bumper2)) {
+    G.bumpers[0].collision = false;
+    G.bumpers[1].collision = true;
+    G.bumpers[2].collision = false;
+  } else if (detectCircleCollision(G.BallPos, G.bumper3)) {
+    G.bumpers[0].collision = false;
+    G.bumpers[1].collision = false;
+    G.bumpers[2].collision = true;
+  } else {
+    G.bumpers[0].collision = false;
+    G.bumpers[1].collision = false;
+    G.bumpers[2].collision = false;
+  }
+}
 void render() {
   G2D::ClearScreen(Color::Black);
 
@@ -198,83 +290,6 @@ void render() {
   G2D::Show();
 }
 
-void nextMove(void) {
-  double dt = G2D::ElapsedTimeFromLastCallbackSeconds();
-  G.BallPos.x += G.BallSpeed.x * dt;
-  G.BallPos.y += G.BallSpeed.y * dt;
-}
-void handleWall(float x, float y) {
-  float alpha = (rand() % 601 - 300) / 100.0;
-  if (G.BallPos.y > G.HeighPix - 15) {
-    G.BallPos.x = x;
-    G.BallPos.y = y;
-    G.BallSpeed = Rebond(G.BallSpeed, V2(0, -1));
-    G.BallSpeed = rotate(G.BallSpeed, alpha * PI / 180);
-  } else if (G.BallPos.y < 15) {
-    G.BallPos.x = x;
-    G.BallPos.y = y;
-    G.BallSpeed = Rebond(G.BallSpeed, V2(0, 1));
-    G.BallSpeed = rotate(G.BallSpeed, alpha * PI / 180);
-  } else if (G.BallPos.x < 15) {
-    G.BallPos.x = x;
-    G.BallPos.y = y;
-    G.BallSpeed = Rebond(G.BallSpeed, V2(1, 0));
-    G.BallSpeed = rotate(G.BallSpeed, alpha * PI / 180);
-  } else if (G.BallPos.x > G.WidthPix - 15) {
-    G.BallPos.x = x;
-    G.BallPos.y = y;
-    G.BallSpeed = Rebond(G.BallSpeed, V2(-1, 0));
-    G.BallSpeed = rotate(G.BallSpeed, alpha * PI / 180);
-  }
-}
-
-void handleBumperCollision(Bumper &bumper, float x, float y) {
-  if (detectCircleCollision(G.BallPos, bumper)) {
-    // ? collision donc retourne la balle a la position avant collision
-    G.BallPos.x = x;
-    G.BallPos.y = y;
-    // ? vecteur normal
-    float nx = bumper.x - G.BallPos.x;
-    float ny = bumper.y - G.BallPos.y;
-
-    G.BallSpeed = Rebond(G.BallSpeed, V2(nx, ny));
-  }
-}
-void handleRoundedBorder(void) {
-  for (int i = 0; i < 11; i++) {
-  }
-}
-
-void handleBumpers(float x, float y) {
-  // ? pour chacun des bumpers
-  for (int i = 0; i < 3; i++) {
-    Bumper &bumper = G.bumpers[i];
-    handleBumperCollision(bumper, x, y);
-  }
-}
-/**
- * @brief synchroniser la collision des bumper entre la fonction logique et
- * render pour déclencher le flash
- */
-void synchronizeBumperCollision(void) {
-  if (detectCircleCollision(G.BallPos, G.bumper1)) {
-    G.bumpers[0].collision = true;
-    G.bumpers[1].collision = false;
-    G.bumpers[2].collision = false;
-  } else if (detectCircleCollision(G.BallPos, G.bumper2)) {
-    G.bumpers[0].collision = false;
-    G.bumpers[1].collision = true;
-    G.bumpers[2].collision = false;
-  } else if (detectCircleCollision(G.BallPos, G.bumper3)) {
-    G.bumpers[0].collision = false;
-    G.bumpers[1].collision = false;
-    G.bumpers[2].collision = true;
-  } else {
-    G.bumpers[0].collision = false;
-    G.bumpers[1].collision = false;
-    G.bumpers[2].collision = false;
-  }
-}
 void Logic() {
   G.idFrame += 1;
   float x = G.BallPos.x;
