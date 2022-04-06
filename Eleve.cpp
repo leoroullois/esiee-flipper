@@ -73,28 +73,23 @@ struct Bumper {
   void drawBumper(void) { G2D::DrawCircle(getV2(), r, Color::Blue, visible); }
 
   void setAndDrawState(float time, bool _collision) {
-    float T = 2.0 / 4;
+    int nbState = 35;
+    float T = 2.0 / nbState;
     float dt = G2D::ElapsedTimeFromLastCallbackSeconds();
 
     if ((time == 0 && _collision) || time != 0) {
 
       std::cout << "time : " << time << "collision " << _collision << std::endl;
       setTime(time + dt);
-      if (time >= 4 * T) {
-        setTime(0);
-        setState(0);
-      } else if (time >= 3 * T) {
-        setState(1);
-        drawCurrentState();
-      } else if (time >= 2 * T) {
-        setState(2);
-        drawCurrentState();
-      } else if (time >= T) {
-        setState(3);
-        drawCurrentState();
-      } else {
-        setState(4);
-        drawCurrentState();
+      for (int i = 0; i < nbState; i++) {
+        if (time >= nbState * T) {
+          setTime(0);
+          setState(0);
+        } else if (time >= i * T && time < (i + 1) * T) {
+          setState(i);
+          drawCurrentState(nbState);
+          break;
+        }
       }
     }
   }
@@ -103,27 +98,7 @@ struct Bumper {
     G2D::DrawCircle(getV2(), r + rayon, Color::Red, true);
     G2D::DrawCircle(getV2(), r, Color::Blue, true);
   }
-  void drawCurrentState() {
-    switch (state) {
-    case 0:
-      drawBorder(0);
-      break;
-    case 1:
-      drawBorder(5);
-      break;
-    case 2:
-      drawBorder(10);
-      break;
-    case 3:
-      drawBorder(15);
-      break;
-    case 4:
-      drawBorder(20);
-      break;
-    default:
-      break;
-    }
-  }
+  void drawCurrentState(int nbState) { drawBorder(nbState - state); }
 };
 
 // information de partie
