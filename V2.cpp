@@ -19,7 +19,7 @@ V2 operator/(const V2 &a, float b) { return V2(a.x / b, a.y / b); }
 
 float operator*(const V2 &a, const V2 &b) { return a.x * b.x + b.y * a.y; };
 
-float operator^(const V2 &a, const V2 &b) { return a.x * b.y - b.x * a.y; };
+float operator^(const V2 &a, const V2 &b) { return a.x * b.y - a.y * b.x; };
 
 std::ostream &operator<<(std::ostream &os, V2 &t)
 {

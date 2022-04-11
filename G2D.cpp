@@ -198,7 +198,7 @@ void anim(int value) {
 
 double G2D::ElapsedTimeFromStartSeconds() {
   duration elapsed = TNewFrame - T0;
-  return elapsed.count() * 0.001;
+  return elapsed.count();
 }
 
 double G2D::ElapsedTimeFromLastCallbackSeconds() {
