@@ -81,7 +81,7 @@ struct Cible {
     y1 = _y1;
     x2 = _x2;
     y2 = _y2;
-    nbLines = 20;
+    nbLines = 35;
     isActive = true;
   }
   V2 getA() { return V2(x1, y1); }
@@ -183,6 +183,7 @@ struct Bumper {
 struct GameData {
   int idFrame = 0;
   bool collision = false;
+  int score = 0;
   int HeighPix = 800;
   int WidthPix = 600;
   V2 BallPos = V2(550, 30);
@@ -198,9 +199,9 @@ struct GameData {
   Cible cibleGauche2 = Cible(50, 300, 120, 440);
   Cible cibleGauche3 = Cible(50, 100, 120, 240);
 
-  Cible cibleDroite1 = Cible(450, 640, 550, 500);
-  Cible cibleDroite2 = Cible(450, 440, 550, 300);
-  Cible cibleDroite3 = Cible(450, 240, 550, 100);
+  Cible cibleDroite1 = Cible(480, 640, 580, 500);
+  Cible cibleDroite2 = Cible(480, 440, 580, 300);
+  Cible cibleDroite3 = Cible(480, 240, 580, 100);
 
   Cible cibles[6] = {cibleGauche1, cibleGauche2, cibleGauche3,
                      cibleDroite1, cibleDroite2, cibleDroite3};
@@ -286,6 +287,7 @@ void handleBumperCollision(Bumper &bumper, float x, float y) {
     float ny = bumper.y - G.BallPos.y;
 
     G.BallSpeed = Rebond(G.BallSpeed, V2(nx, ny));
+    G.score += 100;
   }
 }
 
@@ -320,6 +322,7 @@ void handleCibleCollision(V2 n, int x, int y) {
   G.BallPos.x = x;
   G.BallPos.y = y;
   G.BallSpeed = Rebond(G.BallSpeed, n);
+  G.score += 500;
 }
 
 void handleCible(int x, int y) {
@@ -334,7 +337,35 @@ void handleCible(int x, int y) {
         V2 A = V2(cible.x1 - j, cible.y1);
         V2 B = V2(cible.x2 - j, cible.y2);
         V2 AB = B - A;
-        V2 n = V2(y, -x);
+        V2 n = V2((B - A).y, -(B - A).x);
+        if (interSegmentSegment(cible.prolongeA(15), cible.prolongeB(15), E,
+                                F)) {
+          std::cout << "collision cible" << i << " " << dist(A, B, F) << endl;
+          handleCibleCollision(n, x, y);
+          cible.setIsActive(false);
+          return;
+        }
+
+        V2 firstSommetA = V2(cible.x1 + 15, cible.y1);
+        V2 secondSommetA = V2(cible.x1 - cible.nbLines - 15, cible.y1);
+        if (interSegmentSegment(firstSommetA, secondSommetA, E, F)) {
+          std::cout << "collision cible" << i << " "
+                    << dist(firstSommetA, secondSommetA, F) << endl;
+          handleCibleCollision(n, x, y);
+          cible.setIsActive(false);
+          return;
+        }
+
+        V2 firstSommetB = V2(cible.x2 + 15, cible.y2);
+        V2 secondSommetB = V2(cible.x2 - cible.nbLines - 15, cible.y2);
+        if (interSegmentSegment(firstSommetB, secondSommetB, E, F)) {
+          std::cout << "collision cible" << i << " "
+                    << dist(firstSommetB, secondSommetB, F) << endl;
+          handleCibleCollision(n, x, y);
+          cible.setIsActive(false);
+          return;
+        }
+
         if (interSegmentSegment(cible.prolongeA(15), cible.prolongeB(15), E,
                                 F)) {
           std::cout << "collision cible" << i << " " << dist(A, B, F) << endl;
@@ -349,8 +380,12 @@ void handleCible(int x, int y) {
 void render() {
   G2D::ClearScreen(Color::Black);
 
-  G2D::DrawStringFontMono(V2(80, G.HeighPix - 70), string("Super Flipper"), 50,
-                          5, Color::Blue);
+  G2D::DrawStringFontMono(V2(170, G.HeighPix - 40), string("Super Flipper"), 30,
+                          5, Color::Cyan);
+  for (int i = 0; i < 6; i++) {
+    Cible &cible = G.cibles[i];
+    cible.drawCible();
+  }
 
   G2D::DrawRectangle(V2(0, 0), V2(G.WidthPix, G.HeighPix), Color::Green);
 
@@ -365,13 +400,11 @@ void render() {
       bumper.setAndDrawState(bumper.getTime(), false);
     }
   }
-  for (int i = 0; i < 6; i++) {
-    Cible &cible = G.cibles[i];
-    cible.drawCible();
-  }
   for (int i = 0; i < 11; i++)
     G2D::DrawLine(G.LP[i], G.LP[i + 1], Color::Green);
-
+  G2D::DrawStringFontMono(V2(170, G.HeighPix - 80),
+                          string("Score : ") + to_string(G.score), 30, 5,
+                          Color::Cyan);
   G2D::Show();
 }
 
